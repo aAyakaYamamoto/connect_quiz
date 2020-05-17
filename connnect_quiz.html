@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>組合せクイズ</title>
+<script>
+    let canvas, context, canvasRect;
+    let index, cnt, sx, sy, pos;
+    let mouseDown = false;
+    const left = new Array(4);
+    const right = new Array(4);
+
+// 問題データ
+const question = [["土佐日記", "紀貫之"], ["枕草子", "清少納言"], ["源氏物語", "紫式部"],
+        ["方丈記", "鴨長明"], ["徒然草", "吉田兼好"], ["曽根崎心中", "近松門左衛門"],
+        ["舞姫", "森鴎外"], ["斜陽", "太宰治"], ["雪国", "川端康成"],
+        ["みだれ髪", "与謝野晶子"], ["東海道中膝栗毛", "十返舎一九"], ["たけくらべ", "樋口一葉"]
+        ["草枕", "夏目漱石"], ["羅生門", "芥川龍之介"], ["奥の細道", "松尾芭蕉"],
+        ["方法序説論", "デカルト"], ["エディカ", "スピノザ"], ["単子論","ライプニッツ"],
+        ["死に至る病", "キルケゴール"],["悲劇の誕生", "ニーチェ"],["心理学的タイプ", "ユング"],
+        ["先祖の話", "柳田国男"],["古事記伝", "本居宣長"],["論語", "孔子"]];
+
+const init = () => {
+    // キャンバスの取得
+    canvas = document.getElementById("sheet");
+    context = canvas.getContext("2d");
+    canvasRect =  canvas.getBoundingClientRect();
+    // 問題をスタート
+    startQuestion();
+}
+
+const startQuestion = () => {
+    // 問題の初期化
+    index = 0;
+    for (let i = question.length-1; i > 0; i--){
+        const j = Math.floor(Math.random() * i);
+        [question[i], question[j]] = [question[j], question[i]];
+    }
+    // 問題の作成
+    setQuestion();
+}
+
+const setQuestion = () => {
+    // 左右のデータ作成
+    for (let i = 0; i < 4; i++){
+        left[i]  = {"id":i, "text":question[index+i][0], "right":-1 };
+        right[i] = {"id":i, "text":question[index+i][1] };
+    }
+    for (let i = 3; i > 0; i--){
+        const j = Math.floor(Math.random() * i);
+        [left[i], left[j]] = [left[j], left[i]];
+        const k = Math.floor(Math.random() * i);
+        [right[i], right[k]] = [right[k], right[i]];
+    }
+    // 問題の表示
+    document.getElementById("next").disabled = true;
+    drawQuestion();
+    }
+
+const drawQuestion = (color = "#000000") => {
+    // 左右のテキスト/点・線の描画
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    cnt = 0;
+    for (let i = 0; i < 4; i++){
+        drawText(left[i].text, 180, 60*i+60, "right", "#000000");
+        drawText(right[i].text, 420, 60*i+60, "left", "#000000");
+        drawPoint(200, 60*i+60, color);
+        drawPoint(400, 60*i+60, color);
+        if (left[i].right > -1) {
+            drawLine(200, 60*i+60, 400, 60*left[i].right+60, color);
+            // 正解数をカウント
+            if (left[i].id == right[left[i].right].id) cnt++;
+        }
+    }
+}
+
+const checkAnswer = () => {
+    // 判定
+    if (cnt == 4){
+        // 正解のとき
+         drawQuestion("#00CC00");
+         document.getElementById("next").disabled = false;
+         drawText("ぴーんぽん!正解!!!", 300, 30, "center", "#FF0000") ;
+         index += 4;
+         if (question.length - index < 4)
+         // 終了の合図
+         document.getElementById("next").disabled = true;
+         drawText("---- 終了です -----", 300, 270, "center", "#0000FF");
+    }
+    else {
+        // 不正解のとき
+        drawQuestion("#FF0000");
+        drawText("不正解!!!", 300, 30, "center", " #0000FF");
+    }
+
+}
+
+const startDraw = event => {
+    // 線の描画スタート
+    const x = event.clientX - canvasRect.left;
+    const y = event.clientY - canvasRect.top;
+    for(let i = 0; i < 4; i++){
+        const d = ((200 - x) ** 2 + (60*i+60 - y) ** 2) ** 0.5;
+        if (d < 20){
+            [sx, sy, pos] = [200, 60*i+60, i];
+            left[i].right = -1;
+            mouseDown = true;
+            break;
+        }
+    }
+}
+
+const draw = event => {
+    // 線の描画（確定前）
+    if (mouseDown){
+        const x = event.clientX - canvasRect.left;
+        const y = event.clientY - canvasRect.top;
+        drawQuestion();
+        drawLine(sx, sy, x, y, "#9999CC");
+        drawPoint(x, y, "#9999CC");
+    }
+}
+
+const endDraw = event => {
+    // 線の描画（確定）
+    if (mouseDown){
+        const x = event.clientX - canvasRect.left;
+        const y = event.clientY - canvasRect.top;
+        for(let i = 0; i < 4; i++){
+            const d = ((400-x) ** 2 + (60*i+60-y) ** 2) ** 0.5;
+            if (d < 20) {
+                left[pos].right = i;
+                drawQuestion();
+                mouseDown = false
+                break;
+            }
+        }
+    }
+}
+
+const drawText= (text, x, y, align, color) => {
+     // テキストの描画
+     context.fillStyle = color;
+     context.font = "20px sans-serif";
+     context.textAlign = align;
+     context.textBaseline = "middle";
+     context.fillText(text, x, y);
+ }
+
+ const drawPoint = (x, y, color) => {
+     // 点（塗り潰し）の描画
+     context.fillStyle = color;
+     context.beginPath();
+     context.arc(x, y, 10, 0, Math.PI*2);
+     context.fill();
+ }
+
+ const drawLine = (x1, y1, x2, y2, color) => {
+     // 線の描画
+     context.strokeStyle = color;
+     context.lineWidth = 2;
+     context.beginPath();
+     context.moveTo(x1, y1);
+     context.lineTo(x2, y2);
+     context.stroke();
+ }
+
+</script>
+</head>
+<body onload= "init()">
+<p> 組合せクイズ </p>
+<input type="button" value="はじめから" onclick="startQuestion()">
+<input type="button" id="check" value="判定" onclick="checkAnswer()">
+<input type="button" id="next"  value="次の問題" onclick="setQuestion()">
+<hr>
+正しい組合せとなるように線を引いてみよう！！！<br>
+<canvas id = "sheet" width="600" height="300" style="border: thin solid #000101;" onmousedown = "startDraw(event)" onmousemove = "draw(event)" onmouseup = "endDraw(event)" onmouseleave = "endDraw(event)"></canvas>
+</body>
+</html>
